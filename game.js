@@ -13,7 +13,7 @@
     next: $("nextBtn"), reset: $("resetBtn"), random: $("randomBtn"),
     speed: $("speed"), speedLabel: $("speedLabel"),
     zoom: $("zoom"), zoomLabel: $("zoomLabel"),
-    hints: $("hints"), check: $("checkBtn"), clearGuess: $("clearGuessBtn"),
+    hints: $("hints"), check: $("checkBtn"), clearGuess: $("clearGuessBtn"), editBlocks: $("editBlocksBtn"),
     score: $("score"), toast: $("toast"),
   };
 
@@ -38,6 +38,9 @@
   let brush = "born";
   const guesses = new Map();     // key -> "born" | "die" | "survive"
   let checked = false;
+  // Predict mode runs in phases: "setup" (place white blocks) → "guess" (paint predictions)
+  // → Guess pressed (checked = true) → Next applies the step and goes back to "guess".
+  let phase = "setup";
 
   // Camera: camX/camY = world cell coordinate at the screen's top-left.
   let cell = 20;
@@ -106,6 +109,7 @@
     live = new Set();
     history.length = 0;
     gen = 0;
+    phase = "setup";
     clearGuesses(false);
     changed();
   }
@@ -145,6 +149,7 @@
     document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
     document.querySelector(".mode-play").hidden = m !== "play";
     document.querySelector(".mode-predict").hidden = m !== "predict";
+    phase = "setup";
     clearGuesses(false);
     dirty = true;
   }
@@ -152,13 +157,49 @@
   function clearGuesses(redraw = true) {
     guesses.clear();
     checked = false;
-    ui.score.innerHTML = 'Paint where you think cells will be <b class="y">born</b> and where they will <b class="r">die</b>, then press “Check my guess”.';
     if (redraw) dirty = true;
+    updatePredictUI();
+  }
+
+  // Next button: in predict mode it first starts the guessing, then waits for "Guess".
+  function onNext() {
+    stop();
+    if (mode === "predict") {
+      if (phase === "setup") {
+        if (!live.size) { toast("Place some white blocks first"); return; }
+        phase = "guess";
+        clearGuesses();
+        return;
+      }
+      if (!checked) { toast("Paint your prediction, then press Guess"); return; }
+    }
+    step();
+  }
+
+  function editBlocks() {
+    phase = "setup";
+    clearGuesses();
+  }
+
+  function updatePredictUI() {
+    if (!ui.score) return;
+    const setup = mode === "predict" && phase === "setup";
+    const waiting = mode === "predict" && phase === "guess" && !checked;
+    ui.next.innerHTML = setup ? "Start predicting ⟶" : "Next ⟶";
+    ui.next.classList.toggle("primary", setup || (mode === "predict" && checked));
+    ui.next.disabled = waiting;
+    ui.check.disabled = mode !== "predict" || phase !== "guess" || checked;
+    ui.editBlocks.disabled = setup;
+    document.querySelectorAll(".brush").forEach((b) => (b.disabled = setup));
+    if (mode !== "predict" || checked) return;
+    ui.score.innerHTML = setup
+      ? '<b>Step 1:</b> tap squares to place white blocks (or keep the ones on the board). Then press <b>Start predicting</b>.'
+      : '<b>Step 2:</b> paint where cells will be <b class="y">born</b>, where they will <b class="r">die</b> and (optional) which <b class="g">survive</b>. Then press <b>Guess</b>.';
   }
 
   function paintGuess(x, y) {
     const k = key(x, y);
-    if (checked) { checked = false; }
+    if (checked) { toast("Press Next to see the next step"); return; }
     if (brush === "erase" || guesses.get(k) === brush) guesses.delete(k);
     else guesses.set(k, brush);
     dirty = true;
@@ -173,6 +214,7 @@
     for (const k of f.die) if (guesses.get(k) !== "die") missed++;
     checked = true;
     dirty = true;
+    updatePredictUI();
     const perfect = wrong === 0 && missed === 0;
     ui.score.innerHTML = perfect
       ? `<b class="g">Perfect!</b> ${correct} correct. Press <b>Next</b> to see it happen.`
@@ -337,6 +379,7 @@
     ui.start.disabled = running;
     ui.stop.disabled = !running;
     ui.undo.disabled = history.length === 0;
+    updatePredictUI();
   }
 
   let toastTimer;
@@ -416,7 +459,7 @@
   function handleTap(p) {
     const x = Math.floor(camX + p.x / cell);
     const y = Math.floor(camY + p.y / cell);
-    if (mode === "predict") { paintGuess(x, y); return; }
+    if (mode === "predict" && phase !== "setup") { paintGuess(x, y); return; }
     const k = key(x, y);
     if (live.has(k)) live.delete(k); else live.add(k);
     changed();
@@ -431,13 +474,14 @@
   // ---------- Buttons & keys ----------
   ui.start.onclick = start;
   ui.stop.onclick = stop;
-  ui.next.onclick = () => { stop(); step(); };
+  ui.next.onclick = onNext;
   ui.undo.onclick = () => { stop(); undo(); };
   ui.reset.onclick = reset;
   ui.random.onclick = randomFill;
   ui.hints.onchange = () => (dirty = true);
   ui.check.onclick = checkGuess;
   ui.clearGuess.onclick = () => clearGuesses();
+  ui.editBlocks.onclick = editBlocks;
   ui.speed.oninput = syncSpeed;
   ui.zoom.oninput = () => {
     const { w, h } = viewSize();
@@ -454,7 +498,7 @@
     if (e.target.tagName === "INPUT" && e.target.type !== "range" && e.target.type !== "checkbox") return;
     switch (e.key) {
       case " ": e.preventDefault(); running ? stop() : start(); break;
-      case "ArrowRight": case "n": case "N": stop(); step(); break;
+      case "ArrowRight": case "n": case "N": onNext(); break;
       case "ArrowLeft": case "z": case "Z": stop(); undo(); break;
       case "+": case "=": { const { w, h } = viewSize(); setCell(cell * 1.2, w / 2, h / 2); break; }
       case "-": { const { w, h } = viewSize(); setCell(cell / 1.2, w / 2, h / 2); break; }
