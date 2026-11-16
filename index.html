@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Color Life</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>Color Life</h1>
+    <div class="stats">
+      <span>Gen <b id="gen">0</b></span>
+      <span>Cells <b id="pop">0</b></span>
+    </div>
+  </header>
+
+  <main class="stage">
+    <canvas id="board"></canvas>
+    <div id="toast" class="toast" hidden></div>
+  </main>
+
+  <section class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-mode="play" role="tab">▶ Play mode</button>
+      <button class="tab" data-mode="predict" role="tab">🎨 Predict mode</button>
+    </div>
+
+    <div class="row buttons">
+      <button id="startBtn" class="primary" title="Start (Space)">Start</button>
+      <button id="stopBtn" title="Stop (Space)">Stop</button>
+      <button id="undoBtn" title="Undo one iteration (← or Z)">⟲ Undo</button>
+      <button id="nextBtn" title="Next iteration (→ or N)">Next ⟶</button>
+      <button id="resetBtn" class="danger" title="Clear the board">Reset</button>
+      <button id="randomBtn" title="Fill the visible area randomly">Random</button>
+    </div>
+
+    <div class="row sliders">
+      <label>Speed <span id="speedLabel">200 ms</span>
+        <input id="speed" type="range" min="0" max="100" value="45" />
+      </label>
+      <label>Zoom <span id="zoomLabel">20 px</span>
+        <input id="zoom" type="range" min="0" max="100" value="60" />
+      </label>
+    </div>
+
+    <!-- Play mode extras -->
+    <div class="row mode-play">
+      <label class="check"><input id="hints" type="checkbox" checked /> Show color hints</label>
+      <div class="legend">
+        <span><i class="sw green"></i>stays alive</span>
+        <span><i class="sw red"></i>dies next</span>
+        <span><i class="sw yellow"></i>is born next</span>
+      </div>
+    </div>
+
+    <!-- Predict mode extras -->
+    <div class="row mode-predict" hidden>
+      <div class="brushes">
+        <button class="brush active" data-brush="born"><i class="sw yellow"></i>Born</button>
+        <button class="brush" data-brush="die"><i class="sw red"></i>Dies</button>
+        <button class="brush" data-brush="survive"><i class="sw green"></i>Survives</button>
+        <button class="brush" data-brush="erase">✕ Erase</button>
+      </div>
+      <div class="predict-actions">
+        <button id="checkBtn" class="primary">Check my guess</button>
+        <button id="clearGuessBtn">Clear guesses</button>
+      </div>
+      <p id="score" class="score">Paint where you think cells will be <b class="y">born</b> and where they will <b class="r">die</b>, then press “Check my guess”.</p>
+    </div>
+
+    <p class="help">Tap a square to turn it on, tap again to turn it off · drag to move · scroll / pinch to zoom</p>
+  </section>
+
+  <script src="game.js"></script>
+</body>
+</html>
