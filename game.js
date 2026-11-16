@@ -20,7 +20,7 @@
   const COLORS = {
     bg: "#0f1115", grid: "#1f2430", gridMajor: "#2a3040",
     plain: "#d6dbe6",
-    survive: "#22c55e", die: "#ef4444", born: "#eab308",
+    survive: "#22c55e", die: "#ef4444", born: "#facc15",
   };
 
   // ---------- State ----------
@@ -250,7 +250,14 @@
     const fillCell = (x, y, color, inset = 0) => {
       ctx.fillStyle = color;
       const i = pad + inset;
-      ctx.fillRect(sx(x) + i, sy(y) + i, cell - i * 2 + (pad ? 1 : 0), cell - i * 2 + (pad ? 1 : 0));
+      const size = cell - i * 2 + (pad ? 1 : 0);
+      if (cell >= 6 && ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(sx(x) + i, sy(y) + i, size, size, size * 0.28);
+        ctx.fill();
+      } else {
+        ctx.fillRect(sx(x) + i, sy(y) + i, size, size);
+      }
     };
 
     const showHints = mode === "play" && ui.hints.checked;
@@ -267,7 +274,7 @@
 
     // cells about to be born (semi-transparent yellow)
     if (showHints) {
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.85;
       for (const k of f.born) {
         const [x, y] = parse(k);
         if (visible(x, y)) fillCell(x, y, COLORS.born);
@@ -308,7 +315,11 @@
         const [x, y] = parse(k);
         if (!visible(x, y)) continue;
         const o = ctx.lineWidth / 2 + 1;
-        ctx.strokeRect(sx(x) + o, sy(y) + o, cell - o * 2, cell - o * 2);
+        const s = cell - o * 2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(sx(x) + o, sy(y) + o, s, s, s * 0.28);
+        else ctx.rect(sx(x) + o, sy(y) + o, s, s);
+        ctx.stroke();
       }
     };
     outline(f.born, "born");
